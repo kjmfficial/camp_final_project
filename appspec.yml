@@ -1,0 +1,32 @@
+version: 0.0
+os: linux
+
+files:
+  - source: /
+    destination: /home/ubuntu/lgu_final_project/lgu_final
+permissions:
+  - object: /home/ubuntu/lgu_final_project/
+    owner: ubuntu
+    group: ubuntu
+    mode: 755
+
+hooks:
+  BeforeInstall:
+    - location: scripts/setting_start.sh
+      timeout: 300
+      runas: root
+  ApplicationStop:
+    - location: scripts/stop_services.sh
+      timeout: 60
+      runas: root
+  AfterInstall:
+    - location: scripts/setup_venv.sh
+      timeout: 300
+      runas: root
+  ApplicationStart:
+    - location: scripts/start_services.sh
+      timeout: 300
+      runas: root
+    - location: scripts/react.sh
+      timeout: 300
+      runas: root

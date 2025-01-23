@@ -1,0 +1,58 @@
+# This is a basic workflow to help you get started with Actions
+name: CI_s3_upload
+ 
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout release
+      uses: actions/checkout@v4
+
+
+    - name: env
+      run: |
+        echo "MYSQL_USER=${{ secrets.USER }}" >> .env
+        echo "MYSQL_PASSWORD=${{ secrets.PASSWORD }}" >> .env
+        echo "MYSQL_HOST=${{ secrets.HOST }}" >> .env
+        echo "MYSQL_DB=${{ secrets.USER }}" >> .env
+
+        echo "MONGODB_USER=${{ secrets.USER }}" >> .env
+        echo "MONGODB_PASSWORD=${{ secrets.PASSWORD }}" >> .env
+        echo "MONGODB_HOST=${{ secrets.HOST }}" >> .env
+        echo "MONGODB_PORT=${{ secrets.PORT }}" >> .env
+
+        echo "NAVER_ID=${{ secrets.NAVER_ID }}" >> .env
+        echo "NAVER_PASSWORD=${{ secrets.NAVER_PASSWORD }}" >> .env
+
+        echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env
+        echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
+        echo "AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }}" >> .env
+        echo "BUCKET_NAME=${{ secrets.BUCKET_NAME }}" >> .env
+
+    - name: archive lgu-final
+      run: tar cvfz ./lgu-final.tar.gz *
+
+    - name: AWS configure credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::390402531746:role/s3-githubaction-rule
+        aws-region: ap-northeast-2
+
+    - name: upload to S3
+      run: aws s3 cp --region ap-northeast-2 ./lgu-final.tar.gz s3://${{ secrets.BUCKET_NAME }}/deploy_folder/
+
+    - name: deploy with AWS codeDeploy
+      run: aws deploy create-deployment
+        --application-name lgu_final
+        --deployment-config-name CodeDeployDefault.AllAtOnce
+        --deployment-group-name lgu_final
+        --s3-location bucket=${{ secrets.BUCKET_NAME }},bundleType=tgz,key=deploy_folder/lgu-final.tar.gz
